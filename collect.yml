@@ -1,0 +1,40 @@
+# .github/workflows/collect.yml
+# Запуск сборщика раз в неделю: воскресенье 21:00 UTC (00:00 понедельника по Минску)
+
+name: Trend Radar — Weekly Collection
+
+on:
+  schedule:
+    - cron: '0 21 * * 0'   # Каждое воскресенье в 21:00 UTC
+  workflow_dispatch:         # Ручной запуск через UI GitHub
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60      # Максимум 60 минут на прогон
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run collector
+        run: python -m trend_radar.main
+
+      - name: Commit results to repo
+        run: |
+          git config user.name "Trend Radar Bot"
+          git config user.email "bot@trend-radar.local"
+          git add trend_radar/data/
+          git add trend_radar/logs/
+          # Коммитим только если есть изменения
+          git diff --staged --quiet || git commit -m "📊 Weekly signals $(date +%Y-%m-%d)"
+          git push
